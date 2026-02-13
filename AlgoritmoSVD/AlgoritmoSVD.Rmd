@@ -1,0 +1,46 @@
+---
+title: "SVD_Algoritmo"
+author: "Tarea2Algoritmo"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# 1. Selección del Conjunto de Datos
+Se ha seleccionado el conjunto de datos **MovieLens 100k**. Este dataset es idóneo para el algoritmo SVD, ya que presenta una estructura de matriz dispersa donde las filas representan usuarios y las columnas representan películas, permitiendo identificar patrones de comportamiento ocultos a través de la factorización matricial.
+
+# 2. Implementación del Algoritmo
+A continuación, se presenta el bloque de código encargado de la preparación del entorno y la carga de los datos. Se incluye una validación para instalar las librerías necesarias especificando un repositorio oficial para evitar errores de configuración.
+
+```{r carga_datos, message=FALSE, warning=FALSE}
+# Configuración de repositorio y carga de paquetes
+if(!require(irlba)) install.packages("irlba", repos = "http://cran.us.r-project.org")
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+
+library(irlba)
+library(tidyverse)
+
+# Carga del dataset MovieLens
+ratings <- read.delim("u.data", header = FALSE, col.names = c("user_id", "item_id", "rating", "timestamp"))
+
+# Construcción de la matriz de utilidad (pivotaje de datos)
+matriz_utilidad <- ratings %>%
+  select(user_id, item_id, rating) %>%
+  pivot_wider(names_from = item_id, values_from = rating, values_fill = 0) %>%
+  column_to_rownames("user_id") %>%
+  as.matrix()
+
+# Verificación de las dimensiones de la matriz
+print(paste("Dimensiones de la matriz:", nrow(matriz_utilidad), "usuarios y", ncol(matriz_utilidad), "películas"))
+
+set.seed(314)
+# Ejecución de SVD para los primeros 20 componentes
+svd_resultado <- irlba(matriz_utilidad, nv = 20)
+
+# Cálculo de la proporción de varianza capturada
+varianza_capturada <- (svd_resultado$d^2) / sum(svd_resultado$d^2)
+
+# Generación del Scree Plot
+plot(varianza_capturada, type = "b", pch = 19, col = "darkblue",
+     main = "Scree Plot: Importancia de Factores Latentes",
+     xlab = "Índice del Componente", ylab = "Proporción de Varianza")
+
