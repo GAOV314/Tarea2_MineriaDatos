@@ -1,0 +1,71 @@
+---
+title: "Implementación de Uniform Manifold Approximation and Projection (UMAP)"
+author: "Yehosua Hercules"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# 1. Selección del Conjunto de Datos
+Para la aplicación del algoritmo **UMAP**, se ha seleccionado el conjunto de datos **Breast Cancer Wisconsin (Diagnostic)**, cargado desde el archivo `data.csv`. Este dataset contiene variables numéricas que describen características de núcleos celulares. Es un escenario apropiado para UMAP, ya que permite observar cómo una técnica de reducción de dimensionalidad no lineal organiza casos benignos y malignos según la similitud de sus atributos.
+
+# 2. Implementación del Algoritmo
+En este bloque se preparan las librerías, se cargan los datos locales y se realiza el preprocesamiento. El escalamiento de las variables es importante para que las distancias entre observaciones tengan una contribución equilibrada durante la construcción del embedding.
+
+```{r carga_y_umap, message=FALSE, warning=FALSE}
+# Forzar instalación si falla la carga
+if (!require("uwot", quietly = TRUE)) {
+  install.packages("uwot", repos = "http://cran.us.r-project.org")
+}
+if (!require("tidyverse", quietly = TRUE)) {
+  install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+}
+
+library(uwot)
+library(tidyverse)
+
+# Carga del dataset local
+datos_bc <- read.csv("data.csv")
+
+# Preprocesamiento:
+# 1. Extraemos la etiqueta de diagnóstico
+# 2. Seleccionamos variables numéricas y excluimos ID
+etiquetas <- datos_bc$diagnosis
+caracteristicas <- datos_bc %>%
+  select_if(is.numeric) %>%
+  select(-matches("id"))
+
+# Escalamiento de datos (Normalización Z-score)
+datos_escalados <- scale(as.matrix(caracteristicas))
+
+set.seed(314)
+# Ejecución del algoritmo UMAP en 2 dimensiones
+umap_modelo <- umap(
+  datos_escalados,
+  n_components = 2,
+  n_neighbors = 15,
+  min_dist = 0.1,
+  metric = "euclidean"
+)
+
+# Creación de dataframe para graficar
+df_plot <- data.frame(
+  Dim1 = umap_modelo[, 1],
+  Dim2 = umap_modelo[, 2],
+  Diagnostico = etiquetas
+)
+
+# Generación del gráfico con ggplot2
+ggplot(df_plot, aes(x = Dim1, y = Dim2, color = Diagnostico)) +
+  geom_point(alpha = 0.7, size = 2) +
+  scale_color_manual(
+    values = c("B" = "#2ecc71", "M" = "#e74c3c"),
+    labels = c("Benigno", "Maligno")
+  ) +
+  labs(
+    title = "Visualización UMAP: Agrupamiento Celular (Cáncer de Mama)",
+    x = "Dimensión UMAP 1",
+    y = "Dimensión UMAP 2",
+    color = "Diagnóstico Real"
+  ) +
+  theme_minimal()
+```
