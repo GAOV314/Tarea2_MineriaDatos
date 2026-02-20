@@ -1,0 +1,93 @@
+---
+title: "ICA_Implementacion"
+output:
+  pdf_document: default
+  html_document: default
+date: "2026-02-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Implementación de ICA utilizando el dataset "EEG During Mental Arithmetic Tasks". 
+
+```{r usar_librerias}
+library(edfReader)
+library(fastICA)
+library(ggplot2)
+library(reshape2)
+```
+
+## Cargar el dataset y revisar canales.
+
+Leemos el archivo EDF del sujeto 00 en estado de reposo.
+
+```{r cargar_datos}
+header <- readEdfHeader("Data/Subject00_1.edf")
+signals <- readEdfSignals(header)
+```
+
+```{r nombres_canales}
+nombres_canales <- names(signals)
+print("Los canales disponibles en este EDF son:")
+print(nombres_canales)
+```
+
+## Preprocesamiento de los datos
+
+Extraemos canales frontales (Fp1, Fp2 - captan parpadeos) y centrales (C3, C4).
+Ademas, limitamos a los primeros 2000 puntos de tiempo para mantener la eficiencia.
+
+```{r extraer_canales}
+eeg_data <- data.frame(
+  Fp1 = signals$`EEG Fp1`$signal[1:2000],
+  Fp2 = signals$`EEG Fp2`$signal[1:2000],
+  C3  = signals$`EEG C3`$signal[1:2000],
+  C4  = signals$`EEG C4`$signal[1:2000]
+)
+```
+
+Aplicamos el supuesto de que la media = 0. 
+
+```{r centrar_datos}
+eeg_centered <- scale(eeg_data, center = TRUE, scale = FALSE)
+```
+
+## Aplicar ICA
+
+Extraemos 4 componentes independientes de nuestras 4 señales utilizando el algoritmo FastICA con la función de contraste "logcosh".
+
+```{r extraer_componentes}
+set.seed(123)
+ica_model <- fastICA(eeg_centered, n.comp = 4, alg.typ = "parallel", fun = "logcosh", method = "R")
+```
+
+## Resultados
+
+Visualizamos las componentes independientes obtenidas.
+
+```{r componentes}
+componentes <- as.data.frame(ica_model$S)
+colnames(componentes) <- c("IC1", "IC2", "IC3", "IC4")
+componentes$Tiempo <- 1:2000
+componentes_long <- melt(componentes, id.vars = "Tiempo")
+```
+
+```{r graficar_componentes}
+grafico_ica <- ggplot(componentes_long, aes(x = Tiempo, y = value, color = variable)) +
+  geom_line() +
+  facet_wrap(~variable, ncol = 1, scales = "free_y") +
+  theme_minimal() +
+  labs(title = "Componentes Independientes Extraídos (ICA)",
+       subtitle = "Separación de fuentes en el EEG durante la tarea mental",
+       x = "Puntos de Tiempo", 
+       y = "Amplitud", 
+       color = "Componente") +
+  theme(legend.position = "none")
+
+print(grafico_ica)
+```
+
+
+
