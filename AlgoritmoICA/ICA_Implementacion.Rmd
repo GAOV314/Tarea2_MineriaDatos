@@ -1,8 +1,8 @@
 ---
 title: "ICA_Implementacion"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 date: "2026-02-20"
 ---
 
@@ -37,7 +37,7 @@ print(nombres_canales)
 ## Preprocesamiento de los datos
 
 Extraemos canales frontales (Fp1, Fp2 - captan parpadeos) y centrales (C3, C4).
-Ademas, limitamos a los primeros 2000 puntos de tiempo para mantener la eficiencia.
+Ademas, limitamos a los primeros 2000 puntos de tiempo para mantener la eficiencia y agilizar el cálculo en esta demonstración.
 
 ```{r extraer_canales}
 eeg_data <- data.frame(
@@ -48,7 +48,7 @@ eeg_data <- data.frame(
 )
 ```
 
-Aplicamos el supuesto de que la media = 0. 
+Aplicamos el supuesto de que la media = 0. ICA asume matemáticamente que las señales están centradas en cero.
 
 ```{r centrar_datos}
 eeg_centered <- scale(eeg_data, center = TRUE, scale = FALSE)
@@ -58,8 +58,10 @@ eeg_centered <- scale(eeg_data, center = TRUE, scale = FALSE)
 
 Extraemos 4 componentes independientes de nuestras 4 señales utilizando el algoritmo FastICA con la función de contraste "logcosh".
 
+Se eligen 4 componentes porque la regla general es extraer el mismo número de componentes que de canales, y "logcosh" es una función robusta para encontrar la "no-gaussianidad" (la independencia) de las señales.
+
 ```{r extraer_componentes}
-set.seed(123)
+set.seed(123) # Para reproducibilidad, ya que de lo contrario sería aleatorio
 ica_model <- fastICA(eeg_centered, n.comp = 4, alg.typ = "parallel", fun = "logcosh", method = "R")
 ```
 
@@ -68,10 +70,10 @@ ica_model <- fastICA(eeg_centered, n.comp = 4, alg.typ = "parallel", fun = "logc
 Visualizamos las componentes independientes obtenidas.
 
 ```{r componentes}
-componentes <- as.data.frame(ica_model$S)
+componentes <- as.data.frame(ica_model$S) # Extraemos la matriz S, que contiene las señales fuente ya separadas
 colnames(componentes) <- c("IC1", "IC2", "IC3", "IC4")
 componentes$Tiempo <- 1:2000
-componentes_long <- melt(componentes, id.vars = "Tiempo")
+componentes_long <- melt(componentes, id.vars = "Tiempo") # Convertimos a formato largo para facilitar el trazado
 ```
 
 ```{r graficar_componentes}
@@ -80,7 +82,7 @@ grafico_ica <- ggplot(componentes_long, aes(x = Tiempo, y = value, color = varia
   facet_wrap(~variable, ncol = 1, scales = "free_y") +
   theme_minimal() +
   labs(title = "Componentes Independientes Extraídos (ICA)",
-       subtitle = "Separación de fuentes en el EEG durante la tarea mental",
+       subtitle = "Separación de fuentes en el EEG antes de la tarea mental",
        x = "Puntos de Tiempo", 
        y = "Amplitud", 
        color = "Componente") +
